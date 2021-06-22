@@ -1,49 +1,33 @@
+#include "rtutils.h"
 #include "color.h"
-#include "vec3.h"
-#include "ray.h"
+#include "hittable_list.h"
+#include "sphere.h"
+
 
 #include <iostream>
 
-
-
-/*
-	Ray sphere intersection is essentially solving the quadratic equation
-	t^2 b⋅b+2tb⋅(A−C)+(A−C)⋅(A−C)−r^2=0 where t is the unknown
-
-	
-
-	equations derivation
-	x2+y2+z2=R2 when sphere is at origin
-	(x−Cx)2+(y−Cy)2+(z−Cz)2=r2 where C is the center of the sphere
-	
-	(P−C)⋅(P−C)=(x−Cx)2+(y−Cy)2+(z−Cz)2 => the dot product whwe
-	(P−C)⋅(P−C)=r2
-	where P is the point x,y,z and C is the center x,y,z
-
-	from the ray equation we know that P(t) = A + tb where A is the origin of the ray and b is the direction
-	substitute it in the above eqn
-	(P(t)−C)⋅(P(t)−C)=r2
-	(A+tb−C)⋅(A+tb−C)=r2
-	t2b⋅b+2tb⋅(A−C)+(A−C)⋅(A−C)−r2=0
-
-	Now this is a quadratic equation of format ax^2 + bx + c = 0
-	find out the discriminant b^2 - 4ac
-
-*/
-bool hit_sphere(const point3& center, double radius, const ray& r){
+double hit_sphere(const point3& center, double radius, const ray& r){
+	// this is a simplified version of th original hit_sphere by factoring out 2 from the equation
 	// find out the discriminant
 	vec3 origin_to_center = r.origin() - center;
-	auto a = dot(r.direction(), r.direction());
-	auto b = 2.0 * dot(r.direction(),origin_to_center);
-	auto c = dot(origin_to_center, origin_to_center) - radius*radius;
-	auto discriminant = b*b - 4*a*c;
-	// std::cerr << "Discriminant - " << discriminant << "\n";
-	return (discriminant > 0);
+	auto a = r.direction().len_squared(); // because a.a = len of the vec squared 
+	auto half_b = dot(r.direction(),origin_to_center);
+	auto c = origin_to_center.len_squared() - radius*radius;
+	auto discriminant = half_b * half_b - a*c;
+
+	// add the 2 quadratic eqn solutions for cases where disc < 0 and > 0
+	if (discriminant < 0){
+		// sqrt of -ve num is not real so return -1.
+		return -1.0;
+	} else{
+		return (-half_b - sqrt(discriminant))/a;
+	}
+
 }
-color ray_color(const ray& r){
-	if(hit_sphere(point3(0,0,-1),0.5, r)){
-		// std::cerr << "HITTT";
-		return color(1,0,0);
+color ray_color(const ray& r, const  hittable& world){
+	hit_record rec;
+	if (world.hit(r, 0, infinity, rec)) {
+		return (rec.normal + 1) / 2.0;	
 	}
 	vec3 unit_dir = unit_vector(r.direction());
 	auto t = (unit_dir.y() + 1.0 ) / 2.0;
@@ -54,6 +38,11 @@ int main(){
 	const auto aspect_ratio = 16.0/9.0;
 	const int width = 400;
 	const int height = static_cast<int> (width/aspect_ratio);
+
+	// Create the world
+	hittable_list world;
+	world.add(make_shared<sphere>(point3(0,0,-1), 0.5));
+	world.add(make_shared<sphere>(point3(0,-100.5,-1), 100));
 
 	//Camera details
 	// the viewport is essentially the projection plane
@@ -79,7 +68,7 @@ int main(){
 
 
 			ray r(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-			color pixel_color = ray_color(r);
+			color pixel_color = ray_color(r, world);
 			write_color(std::cout, pixel_color);
 		}
 	}
