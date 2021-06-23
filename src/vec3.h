@@ -52,6 +52,16 @@ class vec3{
 		double len_squared() const{
 			return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
 		}
+
+		inline static vec3 random() {
+			return vec3(random_double(),random_double(),random_double());
+		}
+
+		inline static vec3 random(double min, double max) {
+			return vec3(random_double(min, max),random_double(min, max),random_double(min, max));
+		}
+
+		
 		
 
 	public:
@@ -123,4 +133,28 @@ inline vec3 unit_vector(const vec3 v){
 	return v / v.length();
 }
 
+inline vec3 random_in_unit_sphere() {
+	while (true) {
+		auto p = vec3::random(-1,1);
+		if (p.len_squared() > 1.0 ) {
+			continue;
+		}
+		return p;
+	}
+}
+
+inline vec3 random_unit_vector() {
+	return unit_vector(random_in_unit_sphere());
+}
+
+inline vec3 random_in_hemisphere(const vec3& normal) {
+	vec3 in_unit_sphere = random_in_unit_sphere();
+	if (dot(in_unit_sphere, normal) > 0.0) {
+		// angle betwen 0 and 90
+		// means this vector is in the same hemisphere as the normal
+		return in_unit_sphere;
+	} else {
+		return -in_unit_sphere;
+	} 
+}
 #endif
