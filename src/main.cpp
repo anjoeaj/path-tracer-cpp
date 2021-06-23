@@ -24,10 +24,18 @@ double hit_sphere(const point3& center, double radius, const ray& r){
 	}
 
 }
-color ray_color(const ray& r, const  hittable& world){
+color ray_color(const ray& r, const  hittable& world, int depth){
 	hit_record rec;
-	if (world.hit(r, 0, infinity, rec)) {
-		return (rec.normal + 1) / 2.0;	
+
+	// when the max bounce is reached, stop gathering light
+	if (depth <= 0) {
+		return color(0,0,0);
+	}
+
+	if (world.hit(r, 0.001, infinity, rec)) {
+		// find out the new random direction for the ray to bounce to next time
+		point3 target = rec.p + random_in_hemisphere(rec.normal);
+		return 0.5 * ray_color(ray(rec.p, target - rec.p), world, depth-1);
 	}
 	vec3 unit_dir = unit_vector(r.direction());
 	auto t = (unit_dir.y() + 1.0 ) / 2.0;
@@ -36,15 +44,16 @@ color ray_color(const ray& r, const  hittable& world){
 int main(){
 	// Create Image dimensions
 	const auto aspect_ratio = 16.0/9.0;
-	const int width = 400;
+	const int width = 300;
 	const int height = static_cast<int> (width/aspect_ratio);
 	const int samples_per_pixel = 100;
+	const int max_depth = 50;
 
 	// Create the world
 	hittable_list world;
 	world.add(make_shared<sphere>(point3(0,0,-1), 0.5));
 	world.add(make_shared<sphere>(point3(0,-100.5,-1), 100));
-
+	// world.add(make_shared<sphere>(point3(-0.25,0.5,-0.5), 0.25));
 	//Camera details
 	camera cam;
 	
@@ -62,7 +71,7 @@ int main(){
 				double v = (j + random_double()) / (height - 1);
 
 				ray r = cam.get_ray(u, v);
-				pixel_color += ray_color(r, world);
+				pixel_color += ray_color(r, world, max_depth);
 			}
 		write_color(std::cout, pixel_color, samples_per_pixel);
 		}
