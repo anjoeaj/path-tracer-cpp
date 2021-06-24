@@ -53,6 +53,12 @@ class vec3{
 			return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
 		}
 
+		bool near_zero() const {
+			// to check if the vector is close to zero in all dimensions
+			const auto limit = 1e-8;
+			return (fabs(e[0]) < limit && fabs(e[1]) < limit && fabs(e[2]) < limit);
+		}
+
 		inline static vec3 random() {
 			return vec3(random_double(),random_double(),random_double());
 		}
@@ -61,7 +67,7 @@ class vec3{
 			return vec3(random_double(min, max),random_double(min, max),random_double(min, max));
 		}
 
-		
+
 		
 
 	public:
@@ -156,5 +162,16 @@ inline vec3 random_in_hemisphere(const vec3& normal) {
 	} else {
 		return -in_unit_sphere;
 	} 
+}
+
+inline vec3 reflect(const vec3& v, const vec3& n) {
+	return v - 2 * dot(v,n) * n;
+}
+
+inline vec3 refract(const vec3& v, const vec3& n, double etai_over_eta){
+	auto cos_theta = fmin(dot(-v, n), 1.0);
+	vec3 r_out_perpendicular = etai_over_eta * (v + cos_theta * n);
+	vec3 r_out_parallel = -sqrt(fabs(1.0 - r_out_perpendicular.len_squared())) * n;
+	return r_out_parallel + r_out_perpendicular;
 }
 #endif
