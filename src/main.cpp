@@ -57,17 +57,65 @@ color ray_color(const ray &r, const hittable &world, int depth)
 	auto t = (unit_dir.y() + 1.0) / 2.0;
 	return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
+
+hittable_list random_scene() {
+    hittable_list world;
+
+    auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
+    world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
+
+    for (int a = -11; a < 11; a++) {
+        for (int b = -11; b < 11; b++) {
+            auto choose_mat = random_double();
+            point3 center(a + 0.9*random_double(), 0.2, b + 0.9*random_double());
+
+            if ((center - point3(4, 0.2, 0)).length() > 0.9) {
+                shared_ptr<material> sphere_material;
+
+                if (choose_mat < 0.8) {
+                    // diffuse
+                    auto albedo = color::random() * color::random();
+                    sphere_material = make_shared<lambertian>(albedo);
+                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                } else if (choose_mat < 0.95) {
+                    // metal
+                    auto albedo = color::random(0.5, 1);
+                    auto fuzz = random_double(0, 0.5);
+                    sphere_material = make_shared<metal>(albedo, fuzz);
+                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                } else {
+                    // glass
+                    sphere_material = make_shared<dielectric>(1.5);
+                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                }
+            }
+        }
+    }
+
+    auto material1 = make_shared<dielectric>(1.5);
+    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
+
+    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
+    world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
+
+    auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
+    world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
+
+    return world;
+}
+
 int main()
 {
 	// Create Image dimensions
 	const auto aspect_ratio = 16.0 / 9.0;
-	const int width = 300;
+	const int width = 500;
 	const int height = static_cast<int>(width / aspect_ratio);
-	const int samples_per_pixel = 100;
+	const int samples_per_pixel = 500;
 	const int max_depth = 50;
 
 	// Create the world
 	hittable_list world;
+	world = random_scene();
 
 	//create materials
 	auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
@@ -79,14 +127,28 @@ int main()
 	world.add(make_shared<sphere>(point3(0, -100.5, -1), 100, material_ground));
 	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), 0.5, material_left));
 
-	//interesting and easy trick with dielectric spheres is to note that if you use a negative radius, 
-	// the geometry is unaffected, but the surface normal points inward. 
+	//interesting and easy trick with dielectric spheres is to note that if you use a negative radius,
+	// the geometry is unaffected, but the surface normal points inward.
 	// This can be used as a bubble to make a hollow glass sphere:
 	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), -0.4, material_left));
 	world.add(make_shared<sphere>(point3(1.0, 0.0, -1), 0.5, material_right));
 	// world.add(make_shared<sphere>(point3(-0.25,0.5,-0.5), 0.25));
+	// auto R = cos(pi/4);
+	// // hittable_list world;
+
+	// auto material_left  = make_shared<lambertian>(color(0,0,1));
+	// auto material_right = make_shared<lambertian>(color(1,0,0));
+
+	// world.add(make_shared<sphere>(point3(-R, 0, -1), R, material_left));
+	// world.add(make_shared<sphere>(point3( R, 0, -1), R, material_right));
 	//Camera details
-	camera cam;
+	point3 look_from(13,2,3);
+	point3 look_at(0,0,0);
+	vec3 vup(0,1,0);
+	auto dist_to_focus = 10;//(look_from - look_at).length();
+	auto aperture = 0.1;
+	auto fov = 20;
+	camera cam(look_from, look_at, vup, fov, aspect_ratio, aperture, dist_to_focus); 
 
 	// Now create a PPM format for storing the image data.
 	// Check wikipedia for the format
