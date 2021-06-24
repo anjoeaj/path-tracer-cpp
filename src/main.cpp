@@ -6,55 +6,63 @@
 #include "material.h"
 #include <iostream>
 
-double hit_sphere(const point3& center, double radius, const ray& r){
+double hit_sphere(const point3 &center, double radius, const ray &r)
+{
 	// this is a simplified version of th original hit_sphere by factoring out 2 from the equation
 	// find out the discriminant
 	vec3 origin_to_center = r.origin() - center;
-	auto a = r.direction().len_squared(); // because a.a = len of the vec squared 
-	auto half_b = dot(r.direction(),origin_to_center);
-	auto c = origin_to_center.len_squared() - radius*radius;
-	auto discriminant = half_b * half_b - a*c;
+	auto a = r.direction().len_squared(); // because a.a = len of the vec squared
+	auto half_b = dot(r.direction(), origin_to_center);
+	auto c = origin_to_center.len_squared() - radius * radius;
+	auto discriminant = half_b * half_b - a * c;
 
 	// add the 2 quadratic eqn solutions for cases where disc < 0 and > 0
-	if (discriminant < 0){
+	if (discriminant < 0)
+	{
 		// sqrt of -ve num is not real so return -1.
 		return -1.0;
-	} else{
-		return (-half_b - sqrt(discriminant))/a;
 	}
-
+	else
+	{
+		return (-half_b - sqrt(discriminant)) / a;
+	}
 }
-color ray_color(const ray& r, const  hittable& world, int depth){
+color ray_color(const ray &r, const hittable &world, int depth)
+{
 	hit_record rec;
 
 	// when the max bounce is reached, stop gathering light
-	if (depth <= 0) {
-		return color(0,0,0);
+	if (depth <= 0)
+	{
+		return color(0, 0, 0);
 	}
 
-	if (world.hit(r, 0.001, infinity, rec)) {
+	if (world.hit(r, 0.001, infinity, rec))
+	{
 		// find out the new direction for the ray to bounce to next time
 		ray scattered;
 		color attenuation;
-		
-		if (rec.mat_ptr->scatter(r, rec, attenuation, scattered)) {
+
+		if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+		{
 			// gather the colors recursively
 			return attenuation * ray_color(scattered, world, depth - 1);
 		}
 
-		return color(0,0,0);
+		return color(0, 0, 0);
 		// point3 target = rec.p + random_in_hemisphere(rec.normal);
 		// return 0.5 * ray_color(ray(rec.p, target - rec.p), world, depth-1);
 	}
 	vec3 unit_dir = unit_vector(r.direction());
-	auto t = (unit_dir.y() + 1.0 ) / 2.0;
-	return (1.0 - t) * color(1.0,1.0,1.0) + t*color(0.5,0.7,1.0);
+	auto t = (unit_dir.y() + 1.0) / 2.0;
+	return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
-int main(){
+int main()
+{
 	// Create Image dimensions
-	const auto aspect_ratio = 16.0/9.0;
-	const int width = 600;
-	const int height = static_cast<int> (width/aspect_ratio);
+	const auto aspect_ratio = 16.0 / 9.0;
+	const int width = 300;
+	const int height = static_cast<int>(width / aspect_ratio);
 	const int samples_per_pixel = 100;
 	const int max_depth = 50;
 
@@ -62,40 +70,46 @@ int main(){
 	hittable_list world;
 
 	//create materials
-	auto material_ground = make_shared<lambertian>(color(0.8,0.8,0.0));
-	auto material_center = make_shared<dielectric>(1.5);
+	auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
+	auto material_center = make_shared<lambertian>(color(0.1, 0.2, 0.5));
 	auto material_left = make_shared<dielectric>(1.5);
-	auto material_right = make_shared<metal>(color(0.8,0.6,0.2), 1.0);
+	auto material_right = make_shared<metal>(color(0.8, 0.6, 0.2), 0.0);
 
 	world.add(make_shared<sphere>(point3(0, 0, -1), 0.5, material_center));
 	world.add(make_shared<sphere>(point3(0, -100.5, -1), 100, material_ground));
 	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), 0.5, material_left));
+
+	//interesting and easy trick with dielectric spheres is to note that if you use a negative radius, 
+	// the geometry is unaffected, but the surface normal points inward. 
+	// This can be used as a bubble to make a hollow glass sphere:
+	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), -0.4, material_left));
 	world.add(make_shared<sphere>(point3(1.0, 0.0, -1), 0.5, material_right));
 	// world.add(make_shared<sphere>(point3(-0.25,0.5,-0.5), 0.25));
 	//Camera details
 	camera cam;
-	
+
 	// Now create a PPM format for storing the image data.
 	// Check wikipedia for the format
-	std::cout <<"P3\n"<<width<<" "<<height<<"\n255\n";
+	std::cout << "P3\n"
+		  << width << " " << height << "\n255\n";
 
 	// Put the pixel values into the subsequent lines.
-	for (int j = height - 1; j >= 0; j--){
-		std::cerr << "\rScanlines remaining: "<<j << " " <<std::flush;
-		for (int i = 0; i < width ; i ++){
-			color pixel_color = color(0,0,0);
-			for (int s = 0; s < samples_per_pixel; s++){
+	for (int j = height - 1; j >= 0; j--)
+	{
+		std::cerr << "\rScanlines remaining: " << j << " " << std::flush;
+		for (int i = 0; i < width; i++)
+		{
+			color pixel_color = color(0, 0, 0);
+			for (int s = 0; s < samples_per_pixel; s++)
+			{
 				double u = (i + random_double()) / (width - 1);
 				double v = (j + random_double()) / (height - 1);
 
 				ray r = cam.get_ray(u, v);
 				pixel_color += ray_color(r, world, max_depth);
 			}
-		write_color(std::cout, pixel_color, samples_per_pixel);
+			write_color(std::cout, pixel_color, samples_per_pixel);
 		}
 	}
-	std::cerr <<"\nDone";
-
-
-
+	std::cerr << "\nDone";
 }
