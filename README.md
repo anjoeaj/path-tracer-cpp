@@ -1,7 +1,7 @@
 # path-tracer-cpp
 A path tracer built using CPP. Currently building for CPU rendering. 
 
-![Raytrace](out_reflect.jpg) 
+![Raytrace](out-reflect.jpg) 
 
 
 References to check
